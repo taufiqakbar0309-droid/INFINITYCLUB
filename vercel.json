@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/leaderboard", "destination": "/api/leaderboard.js" },
+    { "source": "/(.*)",        "destination": "/api/index.js" }
+  ]
+}
