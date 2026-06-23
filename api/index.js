@@ -1,5 +1,4 @@
 import { Redis } from "@upstash/redis";
-
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN,
@@ -8,6 +7,7 @@ const redis = new Redis({
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
+  // POST — terima webhook dari Saweria
   if (req.method === "POST") {
     try {
       const body = typeof req.body === "string"
@@ -22,10 +22,12 @@ export default async function handler(req, res) {
 
       const numAmount = Number(amount);
 
-      await redis.setex("infintyclub_pending", 300, JSON.stringify({
+      // Simpan donasi terbaru (expire 5 menit)
+      await redis.setex("infinityclub_pending", 300, JSON.stringify({
         donator, amount: numAmount, message
       }));
 
+      // Update leaderboard
       let lb = await redis.get("infinityclub_leaderboard") || [];
       if (typeof lb === "string") lb = JSON.parse(lb);
 
@@ -39,21 +41,21 @@ export default async function handler(req, res) {
       await redis.set("infinityclub_leaderboard", JSON.stringify(lb));
 
       return res.status(200).json({ success: true });
-
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
   }
 
+  // GET — dibaca Roblox setiap 4 detik
   if (req.method === "GET") {
     try {
       const data = await redis.get("infinityclub_pending");
       if (!data) return res.status(200).send("null");
 
       await redis.del("infinityclub_pending");
+
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
       return res.status(200).json(parsed);
-
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
